@@ -47,7 +47,7 @@ typedef struct {
     uint32_t color;
 } ColorPreset;
 
-// Engine State
+// Engine state
 static int running = 1;
 static int max_x = 1;
 static int max_y = 1;
@@ -61,15 +61,14 @@ static short spring_mode = 0;
 static short global_thaw = 0; 
 static int weather_profile = 0; // 0=Custom, 1=Calm, 2=Blizzard, 3=Gentle
 
-// CLI Override Tracking
+// Keep track of what the user passed via cli
 static int user_set_speed = 0;
 static int user_set_wind = 0;
 static int user_set_flakes = 0;
 
 static const char *custom_particle = NULL;
-static char safe_custom_particle[8] = {0}; // Buffer to restrict particle length safely
+static char safe_custom_particle[8] = {0};
 
-// Memory Buffers
 static int *ground = NULL;    
 static int *base_ground = NULL; 
 static Flake flakes[MAX_FLAKES] = {0};
@@ -78,12 +77,11 @@ static float sin_lut[SINE_LUT_SIZE];
 static struct tb_event event = {0};
 static struct timespec time_last;
 
-// Input State
 static int mouse_btn = 0;
 static int mouse_x = -1;
 static int mouse_y = -1;
 
-// Rendering & Theme
+// Default theme
 static uint32_t color_bg = 0x4C4C4C;
 static uint32_t color_mid = 0x999999;
 static uint32_t color_fg = 0xFFFFFF;
@@ -101,7 +99,6 @@ static const ColorPreset presets[] = {
 };
 static const int num_presets = sizeof(presets) / sizeof(ColorPreset);
 
-// Forward Declarations
 void init_params(void);
 void reset_ground(int new_x, int new_y);
 void update_physics(float dt);
@@ -116,7 +113,7 @@ void set_preset_color(char color_char);
 void set_preset_color_name(const char *name);
 void recolor_all_flakes(void);
 
-// Monotonic clock wrapper
+// Grab a clean delta time to keep physics tied to time, not frame rate
 float get_delta_time(void) {
     struct timespec time_now;
     clock_gettime(CLOCK_MONOTONIC, &time_now);
@@ -125,6 +122,7 @@ float get_delta_time(void) {
                (time_now.tv_nsec - time_last.tv_nsec) * 1e-9f;
     time_last = time_now;
     
+    // Clamp wildly high spikes (e.g. if the user suspends the process)
     if (dt < 0.0f || dt > 0.1f) return 0.016f; 
     return dt;
 }
@@ -147,7 +145,6 @@ uint32_t dim_color(uint32_t color, float factor) {
     return (r << 16) | (g << 8) | b;
 }
 
-// Particle recoloring logic
 void recolor_all_flakes(void) {
     uint32_t pal[] = {0xFF5555, 0x55FF55, 0x5555FF, 0xFFFF55, 0xFF55FF, 0x55FFFF};
     uint32_t layer_colors[3] = {color_bg, color_mid, color_fg};
@@ -161,7 +158,6 @@ void recolor_all_flakes(void) {
     }
 }
 
-// Applies base theme logic (does not immediately trigger full particle recolor)
 void apply_color_theme(uint32_t c) {
     color_fg = c;
     color_mid = dim_color(c, 0.6f);
@@ -170,7 +166,6 @@ void apply_color_theme(uint32_t c) {
     party_mode = 0; 
 }
 
-// Runtime theme application
 void set_preset_color(char color_char) {
     for (int i = 0; i < num_presets; i++) {
         if (presets[i].key == color_char) {
@@ -181,7 +176,6 @@ void set_preset_color(char color_char) {
     }
 }
 
-// Initialization theme application
 void set_preset_color_name(const char *name) {
     for (int i = 0; i < num_presets; i++) {
         if (strcmp(presets[i].name, name) == 0) {
@@ -223,12 +217,11 @@ void print_help(const char *prog_name) {
 int main(int argc, char *argv[]) {
     const char *arg_c = NULL, *arg_m = NULL, *arg_f = NULL, *arg_preset = NULL;
 
-    // Parse CLI options
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-a") == 0) accumulate = 1;
         else if (strcmp(argv[i], "-p") == 0) party_mode = 1;
         else if (strcmp(argv[i], "-P") == 0 && i + 1 < argc) {
-            // Limit to max 4 bytes (enough for 1 UTF-8 char) to prevent visual chaos
+            // Cap custom particles at 4 bytes (1 utf-8 char) to prevent visual chaos
             strncpy(safe_custom_particle, argv[++i], 4);
             safe_custom_particle[4] = '\0';
             custom_particle = safe_custom_particle;
@@ -285,7 +278,7 @@ int main(int argc, char *argv[]) {
     float total_time = 0.0f;
     uint32_t frame_colors[3] = {color_bg, color_mid, color_fg};
 
-    // Main Engine Loop
+    // Main loop
     while (running) {
         float dt = get_delta_time();
         total_time += dt;
@@ -330,7 +323,6 @@ int main(int argc, char *argv[]) {
         nanosleep(&req, NULL);
     }
 
-    // Cleanup
     tb_shutdown();
     if (ground) free(ground);
     if (base_ground) free(base_ground);
@@ -344,7 +336,7 @@ void update_physics(float dt) {
 
     int ground_limit;
     
-    // Spring Mode Melting
+    // Simulate snow melting during spring
     if (spring_mode && accumulate) {
         int melt_rate = (max_x / 4) + 5; 
         for(int m = 0; m < melt_rate; m++) {
@@ -357,7 +349,6 @@ void update_physics(float dt) {
         target_wind *= 0.99f; 
     }
 
-    // Global Thaw Logic
     if (accumulate && !spring_mode) {
         if (!global_thaw) {
             int threshold = (int)(max_y * 1.7f); 
@@ -385,7 +376,6 @@ void update_physics(float dt) {
     int safe_y_bound = (max_y / 2) > 0 ? (max_y / 2) : 1; 
     int safe_x_bound = (max_x / 2) > 0 ? (max_x / 2) : 1;
 
-    // Particle Update Loop
     for (int i = 0; i < nflakes; i++) {
         if (isnan(flakes[i].x) || isnan(flakes[i].y) || isnan(flakes[i].vx) || isnan(flakes[i].vy)) {
             flakes[i].x = (float)((random() % safe_x_bound) * 2);
@@ -395,7 +385,7 @@ void update_physics(float dt) {
             continue;
         }
 
-        // Mouse Integration (Left Click Repel)
+        // Push flakes away from the mouse if left click is held down
         if (mouse_btn == 1 && mouse_x != -1 && mouse_y != -1) {
             float dx = flakes[i].x - mouse_x;
             float dy = flakes[i].y - mouse_y;
@@ -457,8 +447,9 @@ void update_physics(float dt) {
         ground_limit = (max_y * 2) - (accumulate ? ground[ix] : base_ground[ix]);
         int half_y = (int)(flakes[i].y * 2.0f);
 
-        // Ground Collision
-        if (half_y >= ground_limit || flakes[i].y > max_y + 5.0f) {
+        // Fix: make sure flakes are actually falling down before registering a collision. 
+        // Otherwise, particles we launch upwards with the shovel would get trapped invisibly.
+        if ((half_y >= ground_limit && flakes[i].vy > 0.0f) || flakes[i].y > max_y + 5.0f) {
             if (flakes[i].bounces == 0 && flakes[i].vy > 2.0f && half_y < max_y * 2) {
                 flakes[i].vy = -flakes[i].vy * 0.35f; 
                 flakes[i].vx += local_wind * 0.2f;    
@@ -468,7 +459,7 @@ void update_physics(float dt) {
                     ground[ix]++;
                 }
                 
-                // Respawn particle
+                // Recycle the particle at the top
                 flakes[i].y = -(float)(random() % safe_y_bound) - 2.0f; 
                 flakes[i].x = (float)((random() % safe_x_bound) * 2);
                 flakes[i].vx = 0.0f;
@@ -486,7 +477,7 @@ void update_physics(float dt) {
         }
     }
 
-    // Ground Digging Logic
+    // Shovel out snow using the mouse
     if (mouse_btn == 1 && accumulate && ground && mouse_x != -1 && mouse_y != -1) {
         int radius = 4; 
         for (int x = mouse_x - radius; x <= mouse_x + radius; x++) {
@@ -562,7 +553,6 @@ void smooth_snow_physics() {
 void render_frame(uint32_t *layer_colors) { 
     if (max_x <= 0 || max_y <= 0 || !ground || !base_ground) return;
 
-    // 1. Draw Snow Accumulation
     if (accumulate) {
         uint32_t current_snow_color = party_mode ? layer_colors[2] : color_snow;
         for (int x = 0; x < max_x; x++) {
@@ -585,7 +575,7 @@ void render_frame(uint32_t *layer_colors) {
         }
     }
 
-    // 2. Draw Z-Sorted Falling Snowflakes (Back-to-Front)
+    // Draw flakes back-to-front for fake depth
     for (int layer = 0; layer <= 2; layer++) {
         for (int i = 0; i < nflakes; i++) {
             if (flakes[i].layer != layer) continue;
@@ -611,7 +601,7 @@ void reset_ground(int new_x, int new_y) {
         int *new_ground = calloc(new_x, sizeof(int));
         int *new_base = calloc(new_x, sizeof(int));
         
-        // Critical Fix: Explicit memory handling on asymmetric failure
+        // Bail out cleanly if we only managed to allocate one of the buffers
         if (!new_ground || !new_base) {
             if (new_ground) free(new_ground);
             if (new_base) free(new_base);
@@ -656,16 +646,16 @@ void init_params() {
         sin_lut[i] = sinf((float)i * (M_PI / 180.0f));
     }
 
-    // Apply Weather Profile Defaults (only if user did not override via CLI flags)
-    if (weather_profile == 1) { // Calm
+    // Only apply preset defaults if the user didn't override them via flags
+    if (weather_profile == 1) { 
         if (!user_set_wind) target_wind = 0.0f;
         if (!user_set_speed) speedMult = 1.0f;
         if (!user_set_flakes) nflakes = 200;
-    } else if (weather_profile == 2) { // Blizzard
+    } else if (weather_profile == 2) { 
         if (!user_set_wind) target_wind = 4.5f;
         if (!user_set_speed) speedMult = 5.0f;
         if (!user_set_flakes) nflakes = 4000;
-    } else if (weather_profile == 3) { // Gentle
+    } else if (weather_profile == 3) { 
         if (!user_set_wind) target_wind = 0.5f;
         if (!user_set_speed) speedMult = 1.5f;
         if (!user_set_flakes) nflakes = 500;
@@ -714,7 +704,6 @@ void init_params() {
             flakes[i].amplitude = 0.15f;   
         }
 
-        // Apply Weather Profile Modifiers 
         if (weather_profile == 1) { 
             flakes[i].mass *= 0.5f;
         } else if (weather_profile == 2) { 
