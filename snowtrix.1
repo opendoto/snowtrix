@@ -1,0 +1,211 @@
+.TH SNOWTRIX 1 "snowtrix" "User Commands"
+.SH NAME
+snowtrix \- interactive snowfall simulation for the terminal
+.SH SYNOPSIS
+.B snowtrix
+.RI [ OPTIONS ]
+.SH DESCRIPTION
+.B snowtrix
+is an interactive terminal-based particle engine that simulates
+falling snow, wind, snow accumulation, and mouse interaction.
+
+Snowflakes are rendered using multiple depth layers to create a
+simple parallax effect. The simulation can be modified interactively
+while it is running.
+
+.B snowtrix
+is written in C99 and uses termbox2 for terminal interaction.
+.SH OPTIONS
+.TP
+.B -a
+Enable snow accumulation when the program starts.
+.TP
+.B -p
+Start the program directly in Party Mode.
+.TP
+.BI "-c " RRGGBB
+Set the foreground snow color.
+.TP
+.BI "-m " RRGGBB
+Set the middle-layer snow color.
+.TP
+.BI "-f " RRGGBB
+Set the background-layer snow color.
+.TP
+.BI "-C " theme
+Select a predefined color theme.
+.TP
+.BI "-s " speed
+Set the initial falling speed.
+.TP
+.BI "-w " wind
+Set the initial wind force.
+.TP
+.BI "-b " flakes
+Set the number of active snowflakes.
+.TP
+.B "-h, --help"
+Display a help message and exit.
+.SH INTERACTIVE CONTROLS
+.SS General
+.TP
+.B q
+Quit the program.
+.TP
+.B ESC
+Quit the program.
+.TP
+.B a
+Toggle snow accumulation.
+.TP
+.B s
+Toggle Spring Mode, which automatically melts accumulated snow.
+.TP
+.B p
+Toggle Party Mode.
+.SS Environment
+.TP
+.B >, .
+Increase wind force to the right.
+.TP
+.B <, ,
+Increase wind force to the left.
+.TP
+.B w
+Calm the wind.
+.TP
+.B +, =
+Increase falling speed.
+.TP
+.B -, _
+Decrease falling speed.
+.TP
+.B m
+Add 50 active snowflakes.
+.TP
+.B l
+Remove 50 active snowflakes.
+.SS COLOR PRESETS
+.TP
+.B !
+Red.
+.TP
+.B @
+Green.
+.TP
+.B #
+Yellow.
+.TP
+.B $
+Blue.
+.TP
+.B %
+Magenta.
+.TP
+.B ^
+Cyan.
+.TP
+.B &
+White.
+.TP
+.B )
+Dark gray.
+.SH MOUSE
+Mouse interaction can be used to influence snowflakes and accumulated
+snow. Moving or clicking the mouse can push snowflakes around and
+dig into accumulated snow.
+
+Mouse support depends on the terminal emulator providing mouse
+tracking.
+.SH MODES
+.TP
+.B Accumulation
+Allows snow to build up on the ground and spread across the surface.
+.TP
+.B Spring Mode
+Dynamically melts accumulated snow while the simulation continues.
+.TP
+.B Party Mode
+Replaces normal snow colors with animated RGB colors.
+.SH ENVIRONMENT
+.B snowtrix
+does not require a special environment configuration.
+
+It requires a Linux or other POSIX-compatible system with a terminal
+capable of providing the functionality required by termbox2.
+.SH FILES
+No configuration files are required by
+.B snowtrix.
+.SH EXIT STATUS
+.TP
+.B 0
+The program terminated successfully.
+.TP
+.B >0
+An error occurred.
+.SH NOTES
+.B snowtrix
+is a terminal application. Its appearance and some interactive
+behavior may vary between terminal emulators.
+
+Resizing the terminal while the simulation is running may produce
+minor visual artifacts during redraw.
+
+Snowflake glyphs may appear differently depending on the terminal's
+font and Unicode support.
+.SH EXAMPLES
+Start the simulation normally:
+.PP
+.nf
+.RS
+snowtrix
+.RE
+.fi
+.PP
+Start with accumulated snow enabled:
+.PP
+.nf
+.RS
+snowtrix -a
+.RE
+.fi
+.PP
+Start in Party Mode:
+.PP
+.nf
+.RS
+snowtrix -p
+.RE
+.fi
+.PP
+Start with a custom foreground color:
+.PP
+.nf
+.RS
+snowtrix -c ff0000
+.RE
+.fi
+.PP
+Start with a custom speed, wind, and snowflake count:
+.PP
+.nf
+.RS
+snowtrix -s 2 -w 1 -b 500
+.RE
+.fi
+.SH BUGS
+Known limitations include visual artifacts when resizing the terminal
+during execution, terminal-dependent mouse support, and differences
+in Unicode snowflake rendering between terminal fonts.
+
+Bug reports and patches should be submitted through the project's
+repository.
+.SH AUTHOR
+The snowtrix project is maintained by opendoto.
+.SH COPYRIGHT
+Copyright \(co opendoto.
+
+Licensed under the MIT License.
+.SH SEE ALSO
+.BR termbox2 (3),
+.BR make (1)

@@ -30,6 +30,7 @@ The idea is simple: open a terminal, let the snow fall, and play with the simula
 * GCC or Clang with C99 support
 * GNU Make
 * `ncursesw` and `libm`
+* `man-db` for viewing the installed manual page
 
 `termbox2` is included directly in the source tree, so there is no separate termbox2 installation step.
 
